@@ -1,4 +1,5 @@
 import userModel from "../models/userModel";
+import bcrypt from "bcrypt";
 
 interface RegisterParams {
   firstName: string;
@@ -19,11 +20,12 @@ export const register = async ({
     return { data: "User already exists!", statusCode: 404 };
   }
 
+  const hashedPassword = await bcrypt.hash(password, 10);
   const newUser = new userModel({
-    email: email,
-    password: password,
-    firstName: firstName,
-    lastName: lastName,
+    email,
+    password: hashedPassword,
+    firstName,
+    lastName,
   });
   await newUser.save();
 
@@ -39,13 +41,13 @@ export const login = async ({ email, password }: LoginParams) => {
   const findUser = await userModel.findOne({ email });
 
   if (!findUser) {
-    return { error: { message: "Incorrect email or password" } };
+    return { data: "Incorrect email or password", statusCode: 400 };
   }
 
-  const passwordMatch = password === findUser.password;
+  const passwordMatch = await bcrypt.compare(password, findUser.password);
   if (passwordMatch) {
-    return findUser;
+    return { data: findUser, statusCode: 200 };
   }
 
-  return { error: { message: "Incorrect email or password" } };
+  return { data: "Incorrect email or password", statusCode: 400 };
 };
